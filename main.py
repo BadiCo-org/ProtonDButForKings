@@ -1,5 +1,4 @@
 import json
-
 from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 import requests
@@ -9,6 +8,13 @@ yardim = """Yardım
     1 - Oyun ara\n"""
 
 headers = {"User-Agent": "Mozilla/5.0"}
+translate_api_url = "https://google-translate113.p.rapidapi.com/api/v1/translator/text"
+
+with open('api.json', 'r', encoding='utf-8') as api_infos:
+    data = json.load(api_infos)
+    x_rapidapi_key = data["x-rapidapi-key"]
+    x_rapidapi_host = data["x-rapidapi-host"]
+    exchange_rate_api_key = data["exchange_rate_api_key"]
 
 def oyunlari_ara(isim: str):
     url = f'https://www.protondb.com/search?q={isim}'
@@ -54,9 +60,6 @@ def oyun_detayli_bilgi(_id: int):
     genel_bilgiler = requests.get(f"https://www.protondb.com/proxy/steam/api/appdetails/?appids={_id}", headers=headers)
     rating_bilgi = requests.get(f"https://www.protondb.com/api/v1/reports/summaries/{_id}.json", headers=headers)
 
-    print(genel_bilgiler)
-    print(rating_bilgi)
-
     if genel_bilgiler.status_code == 200 and rating_bilgi.status_code == 200:
         genel_bilgiler = json.loads(genel_bilgiler.text)
         rating_bilgi = json.loads(rating_bilgi.text)
@@ -74,10 +77,10 @@ def oyun_detayli_bilgi(_id: int):
             Steam ID: {genel_bilgiler[_id]["data"]["steam_appid"]}
             Yaş Sınırı: {genel_bilgiler[_id]["data"]["required_age"]}
             Bedavamı?: {genel_bilgiler[_id]["data"]["is_free"]}
-            Desteklenen Diller: {BeautifulSoup(genel_bilgiler[_id]["data"]["supported_languages"], 'html.parser').get_text(separator=" ")}
-            Minimum PC Gereksinimleri: {BeautifulSoup(genel_bilgiler[_id]["data"]["pc_requirements"]["minimum"], 'html.parser').get_text(separator=" ")}
-            Önerilen PC Gereksinimleri: {BeautifulSoup(genel_bilgiler[_id]["data"]["pc_requirements"]["recommended"], 'html.parser').get_text(separator=" ")}
-            Oyunun Kısa Bilgisi: {genel_bilgiler[_id]["data"]["short_description"]}
+            Desteklenen Diller: {cevir(BeautifulSoup(genel_bilgiler[_id]["data"]["supported_languages"], 'html.parser').get_text(separator=" "))}
+            Minimum PC Gereksinimleri: {cevir(BeautifulSoup(genel_bilgiler[_id]["data"]["pc_requirements"]["minimum"], 'html.parser').get_text(separator=" ")).replace("Minimum: ", "")}
+            Önerilen PC Gereksinimleri: {cevir(BeautifulSoup(genel_bilgiler[_id]["data"]["pc_requirements"]["recommended"], 'html.parser').get_text(separator=" ")).replace("Önerilen: ", "")}
+            Oyunun Kısa Bilgisi: {cevir(genel_bilgiler[_id]["data"]["short_description"])}
             
         {fiyat_bilgi_al(genel_bilgiler, _id)}
         """
@@ -102,11 +105,44 @@ def rating_bilgi_al(rating: str):
 
 def fiyat_bilgi_al(json_body: dict, _id: int):
     if not json_body[_id]["data"]["is_free"]:
-        return
+        para_birimi = json_body[_id]["data"]["price_overview"]["currency"]
+        fiyat = json_body[_id]["data"]["price_overview"]["final"] / 100
+        return f"""
+    Fiyatlandırma
+        {fiyat} {para_birimi} = {fiyat_donustur(para_birimi, float(fiyat)):.2f} TL"""
     else:
-        print(f"""
-        Fiyatlandırma
-            {json_body[_id]["data"]["price_overview"]["final_formatted"]}""")
+        return
+
+def cevir(text: str):
+    json_payload = {
+        "from": "auto",
+        "to": "tr",
+        "text": text
+    }
+
+    header_for_translation_api = {
+        "x-rapidapi-key": x_rapidapi_key,
+        "x-rapidapi-host": x_rapidapi_host,
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(translate_api_url, json=json_payload, headers=header_for_translation_api)
+    response_json = json.loads(response.text)
+
+    return response_json["trans"]
+
+def fiyat_donustur(para_birimi: str, miktar: float):
+    response = requests.get(f"https://v6.exchangerate-api.com/v6/{exchange_rate_api_key}/latest/{para_birimi}")
+
+    if response.status_code == 200:
+        response_json = json.loads(response.text)
+
+        try_donusturme = response_json["conversion_rates"]["TRY"] * miktar
+
+        return try_donusturme
+    else:
+        print(f"Error {response.status_code}")
+        return "Bulunamadı"
 
 session = HTMLSession()
 
@@ -128,7 +164,7 @@ print("""
 |   | :    ;   :  .'    |   :   /  '  :  `--'   \   '---'    |   :  \  '   : |     
 `---'.|    |   ,.'      |   | ,'   :  ,      .-./            |   | ,'  ;   |,'     
   `---`    '---'        `----'      `--`----'                `----'    '---'       
-                            from BadiCo, for everyone.""")
+                            from BadiCo, for everyone.\n""")
 
 while True:
     try:
