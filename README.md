@@ -32,3 +32,10 @@ Programı çalıştırın
 ## Bilgilendirme
 
 Bu program yakında API olarak sunulacaktır. Çoklu dil desteği gibi özellikler eklemeyi düşünüyorum.
+
+## API Siteleri
+
+https://rapidapi.com/
+https://www.exchangerate-api.com/
+
+Not: kullanılan her API ücretsizdir.
