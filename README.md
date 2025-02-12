@@ -22,7 +22,7 @@ Gerekli paketleri yükleyin
   pip install -r requirements.txt
 ```
 
-Sunucuyu çalıştırın
+Programı çalıştırın
 
 ```bash
   python main.py
