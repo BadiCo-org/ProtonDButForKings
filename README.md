@@ -35,7 +35,7 @@ Bu program yakında API olarak sunulacaktır. Çoklu dil desteği gibi özellikl
 
 ## API Siteleri
 
-https://rapidapi.com/
-https://www.exchangerate-api.com/
+- https://rapidapi.com/
+- https://www.exchangerate-api.com/
 
 Not: kullanılan her API ücretsizdir.
