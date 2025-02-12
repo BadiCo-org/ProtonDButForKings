@@ -3,18 +3,10 @@ import json
 from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 import requests
-from setuptools.command.build_ext import if_dl
 
 yardim = """Yardım
     0 - Çıkış
     1 - Oyun ara\n"""
-
-"""
-1 - Kullanıcı oyun aradığında protondb'de eş zamanlı arama yap.
-2 - Aradığı oyun için çıkan bütün oyunların isimlerini ve id'lerini kaydet ve bu oyunları kullanıcıya seçenek olarak sun.
-3 - Kullanıcının seçtiği oyunun id'sini kaydettiğin idlerden al ve bunu protondb'de arat.
-4 - Oyun hakkındaki bütün bilgileri kullanıcıya göster.
-"""
 
 headers = {"User-Agent": "Mozilla/5.0"}
 
