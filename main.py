@@ -1,4 +1,3 @@
-import json
 from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 import requests
@@ -27,6 +26,11 @@ def oyunlari_ara(isim: str):
     main = main_div.find('main.App__FullFrame-sc-h4g8tw-1.eascgF', first=True)
     mains_main_div = main.find('div.styled__Flex-sc-g24nyo-0.styled__Column-sc-g24nyo-1.styled__AlignedColumn-sc-g24nyo-2.App__ContentContainer-sc-h4g8tw-2.content', first=True)
     games_div = mains_main_div.find('div[type="cell"].styled__Flex-sc-g24nyo-0.styled__Row-sc-g24nyo-4', first=True)
+
+    if games_div is None:
+        print("Doğru bir oyun ismi giriniz!")
+        return
+
     oyunlar = games_div.find('div.styled__Flex-sc-g24nyo-0.styled__Column-sc-g24nyo-1.GameCell__Container-sc-jkepq6-0.gMlTmq.nlzCs.hDldoz')
 
     oyun_bilgileri = []
@@ -61,31 +65,37 @@ def oyun_detayli_bilgi(_id: int):
     rating_bilgi = requests.get(f"https://www.protondb.com/api/v1/reports/summaries/{_id}.json", headers=headers)
 
     if genel_bilgiler.status_code == 200 and rating_bilgi.status_code == 200:
-        genel_bilgiler = json.loads(genel_bilgiler.text)
-        rating_bilgi = json.loads(rating_bilgi.text)
+        genel_bilgiler_json = json.loads(genel_bilgiler.text)
+        rating_bilgi_json = json.loads(rating_bilgi.text)
 
-        oyun_bilgi = f"""
-        {genel_bilgiler[_id]["data"]["name"]}
+        if genel_bilgiler_json[_id]["success"]:
+            oyun_bilgi = f"""
+                    {genel_bilgiler_json[_id]["data"]["name"]}
 
-        Derecelendirme
-            Mevcut Derecelendirme: {rating_bilgi["tier"]} ({rating_bilgi_al(rating_bilgi["tier"])})
-            En İyi Derecelendirmeli Rapor: {rating_bilgi["bestReportedTier"]} ({rating_bilgi_al(rating_bilgi["bestReportedTier"])})
-            Trend Olan Derecelendirme: {rating_bilgi["trendingTier"]} ({rating_bilgi_al(rating_bilgi["trendingTier"])})
+                    Derecelendirme
+                        Mevcut Derecelendirme: {rating_bilgi_json["tier"]} ({rating_bilgi_al(rating_bilgi_json["tier"])})
+                        En İyi Derecelendirmeli Rapor: {rating_bilgi_json["bestReportedTier"]} ({rating_bilgi_al(rating_bilgi_json["bestReportedTier"])})
+                        Trend Olan Derecelendirme: {rating_bilgi_json["trendingTier"]} ({rating_bilgi_al(rating_bilgi_json["trendingTier"])})
 
-        Oyunun Genel Bilgileri
-            Program Tipi: {genel_bilgiler[_id]["data"]["type"]}
-            Steam ID: {genel_bilgiler[_id]["data"]["steam_appid"]}
-            Yaş Sınırı: {genel_bilgiler[_id]["data"]["required_age"]}
-            Bedavamı?: {genel_bilgiler[_id]["data"]["is_free"]}
-            Desteklenen Diller: {cevir(BeautifulSoup(genel_bilgiler[_id]["data"]["supported_languages"], 'html.parser').get_text(separator=" "))}
-            Minimum PC Gereksinimleri: {cevir(BeautifulSoup(genel_bilgiler[_id]["data"]["pc_requirements"]["minimum"], 'html.parser').get_text(separator=" ")).replace("Minimum: ", "")}
-            Önerilen PC Gereksinimleri: {cevir(BeautifulSoup(genel_bilgiler[_id]["data"]["pc_requirements"]["recommended"], 'html.parser').get_text(separator=" ")).replace("Önerilen: ", "")}
-            Oyunun Kısa Bilgisi: {cevir(genel_bilgiler[_id]["data"]["short_description"])}
-            
-        {fiyat_bilgi_al(genel_bilgiler, _id)}
-        """
+                    Oyunun Genel Bilgileri
+                        Program Tipi: {genel_bilgiler_json[_id]["data"]["type"]}
+                        Steam ID: {genel_bilgiler_json[_id]["data"]["steam_appid"]}
+                        Yaş Sınırı: {genel_bilgiler_json[_id]["data"]["required_age"]}
+                        Bedavamı?: {genel_bilgiler_json[_id]["data"]["is_free"]}
+                        Desteklenen Diller: {cevir(BeautifulSoup(genel_bilgiler_json[_id]["data"]["supported_languages"], 'html.parser').get_text(separator=" "))}
+                        Minimum PC Gereksinimleri: {cevir(BeautifulSoup(genel_bilgiler_json[_id]["data"]["pc_requirements"]["minimum"], 'html.parser').get_text(separator=" ")).replace("Minimum: ", "")}
+                        Önerilen PC Gereksinimleri: {cevir(BeautifulSoup(genel_bilgiler_json[_id]["data"]["pc_requirements"]["recommended"], 'html.parser').get_text(separator=" ")).replace("Önerilen: ", "")}
+                        Oyunun Kısa Bilgisi: {cevir(genel_bilgiler_json[_id]["data"]["short_description"])}
 
-        return oyun_bilgi
+                    {fiyat_bilgi_al(genel_bilgiler_json, _id)}
+                    """
+
+            return oyun_bilgi
+        else:
+            print("Oyun hala güncel bilgilere sahip değil veya bir hata oluştu.")
+    else:
+        print("ProtonDB sunucularına erişilemedi.")
+        return
 
 def rating_bilgi_al(rating: str):
     if rating == "platinum":
@@ -210,6 +220,19 @@ while True:
                 oyun_bilgi = oyun_detayli_bilgi(en_son_oyun_bilgileri[info_secenek - 1][1])
                 if oyun_bilgi is not None:
                     print(oyun_bilgi)
+                    with open('algoritma_duzenleyici.json', 'r+') as algoritma_file:
+                        data: dict = json.loads(algoritma_file.read())
+
+                        if oyun_ismi not in data["aranan-oyunlar"]:
+                            data["aranan-oyunlar"][oyun_ismi] = 0
+
+                        data["aranan-oyunlar"][oyun_ismi] = [data["aranan-oyunlar"].get(oyun_ismi) + 1, {
+                            "secilen-oyunlar": {
+                                en_son_oyun_bilgileri[info_secenek - 1][0]: data["aranan-oyunlar"][oyun_ismi][1].get(
+                                    "secilen-oyunlar") + 1
+                            }
+                        }]
+                        algoritma_file.write(json.dumps(data))
                     break
                 else:
                     print("Oyun bilgileri alınırken bir hata oluştu.")
