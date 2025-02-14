@@ -1,7 +1,7 @@
+import json
 from requests_html import HTMLSession
 from bs4 import BeautifulSoup
 import requests
-import json
 
 yardim = """Yardım
     0 - Çıkış
@@ -194,13 +194,38 @@ while True:
         print("Görüşürüz!")
         exit(0)
     elif secenek == 1:
-        oyun_ismi = input("Aramak istediğiniz oyunun ismini giriniz: ")
+        oyun_ismi = input("Aramak istediğiniz oyunun ismini giriniz: ").lower()
         en_son_oyun_bilgileri = oyunlari_ara(oyun_ismi)
 
         print(f"| {oyun_ismi.capitalize()} için arama sonuçları: ")
         for oyun in en_son_oyun_bilgileri:
             print(f"| {en_son_oyun_bilgileri.index(oyun) + 1} - {oyun[0]} ID: {oyun[1]} |")
             print("----------------------------------------------------------------------")
+
+        try:
+            with open('algoritma_duzenleyici.json', 'r', encoding='utf-8') as algoritma_file:
+                data: dict = json.loads(algoritma_file.read())
+
+                if oyun_ismi in data["aranan-oyunlar"].keys():
+                    aramaya_gore_en_cok_secilen_oyunlar = data["aranan-oyunlar"][oyun_ismi][1][
+                        "secilen-oyunlar"].items()
+                    en_cok_secilen_oyun = tuple()
+
+                    for secilen_oyun, secim_sayisi in aramaya_gore_en_cok_secilen_oyunlar:
+                        if len(en_cok_secilen_oyun) == 0:
+                            en_cok_secilen_oyun = (secilen_oyun, secim_sayisi)
+                        elif secim_sayisi > en_cok_secilen_oyun[1]:
+                            en_cok_secilen_oyun = (secilen_oyun, secim_sayisi)
+
+                    print(f"""//////////////////////////////////////////////////////////////////////
+|
+Önerilen Oyun: {en_cok_secilen_oyun[0]}
+|
+//////////////////////////////////////////////////////////////////////
+----------------------------------------------------------------------
+""")
+        except KeyError:
+            pass
 
         while True:
             try:
@@ -221,19 +246,27 @@ while True:
                 oyun_bilgi = oyun_detayli_bilgi(en_son_oyun_bilgileri[info_secenek - 1][1])
                 if oyun_bilgi is not None:
                     print(oyun_bilgi)
-                    with open('algoritma_duzenleyici.json', 'r+') as algoritma_file:
+                    with open('algoritma_duzenleyici.json', 'r+', encoding='utf-8') as algoritma_file:
+                        print(en_son_oyun_bilgileri)
                         data: dict = json.loads(algoritma_file.read())
 
-                        if oyun_ismi not in data["aranan-oyunlar"]:
-                            data["aranan-oyunlar"][oyun_ismi] = 0
+                        if oyun_ismi not in data["aranan-oyunlar"].keys():
+                            data["aranan-oyunlar"][oyun_ismi] = [0, {
+                                "secilen-oyunlar": {
+                                    en_son_oyun_bilgileri[info_secenek - 1][0]: 0
+                                }
+                            }]
 
-                        data["aranan-oyunlar"][oyun_ismi] = [data["aranan-oyunlar"].get(oyun_ismi) + 1, {
+                        data["aranan-oyunlar"][oyun_ismi] = [data["aranan-oyunlar"][oyun_ismi][0] + 1, {
                             "secilen-oyunlar": {
-                                en_son_oyun_bilgileri[info_secenek - 1][0]: data["aranan-oyunlar"][oyun_ismi][1].get(
-                                    "secilen-oyunlar") + 1
+                                en_son_oyun_bilgileri[info_secenek - 1][0]: data["aranan-oyunlar"][oyun_ismi][1]["secilen-oyunlar"].get(
+                                    en_son_oyun_bilgileri[info_secenek - 1][0]
+                                ) + 1
                             }
                         }]
-                        algoritma_file.write(json.dumps(data))
+                        algoritma_file.seek(0)
+                        algoritma_file.truncate()
+                        algoritma_file.write(json.dumps(data, indent=4))
                     break
                 else:
                     print("Oyun bilgileri alınırken bir hata oluştu.")
